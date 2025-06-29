@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import NavigationHeader from '../../components/ui/NavigationHeader';
 import HeroSearchSection from './components/HeroSearchSection';
 import CategoryFilter from './components/CategoryFilter';
@@ -7,12 +7,23 @@ import PropertySection from './components/PropertySection';
 import TrendingDestinations from './components/TrendingDestinations';
 import HostPromotionBanner from './components/HostPromotionBanner';
 import { useAuth } from '../../contexts/AuthContext';
+import Icon from '../../components/AppIcon';
+import Button from '../../components/ui/Button';
 
 const Homepage = () => {
   const [filteredProperties, setFilteredProperties] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+
+  // Get search parameters from URL
+  const searchLocation = searchParams.get('location');
+  const searchCheckIn = searchParams.get('checkIn');
+  const searchCheckOut = searchParams.get('checkOut');
+  const searchGuests = parseInt(searchParams.get('guests')) || 1;
+  const hasSearchParams = searchLocation || searchCheckIn || searchCheckOut;
 
   // Mock properties data
   const mockProperties = [
@@ -30,7 +41,10 @@ const Homepage = () => {
       availableDates: "Jan 15-20",
       category: "apartment",
       isNew: true,
-      isFavorite: false
+      isFavorite: false,
+      maxGuests: 4,
+      bedrooms: 2,
+      bathrooms: 1
     },
     {
       id: 2,
@@ -46,7 +60,10 @@ const Homepage = () => {
       availableDates: "Jan 22-27",
       category: "villa",
       isNew: false,
-      isFavorite: true
+      isFavorite: true,
+      maxGuests: 8,
+      bedrooms: 4,
+      bathrooms: 3
     },
     {
       id: 3,
@@ -62,7 +79,10 @@ const Homepage = () => {
       availableDates: "Feb 1-6",
       category: "house",
       isNew: true,
-      isFavorite: false
+      isFavorite: false,
+      maxGuests: 6,
+      bedrooms: 3,
+      bathrooms: 2
     },
     {
       id: 4,
@@ -78,7 +98,10 @@ const Homepage = () => {
       availableDates: "Feb 10-15",
       category: "apartment",
       isNew: false,
-      isFavorite: false
+      isFavorite: false,
+      maxGuests: 3,
+      bedrooms: 1,
+      bathrooms: 1
     },
     {
       id: 5,
@@ -94,7 +117,10 @@ const Homepage = () => {
       availableDates: "Feb 18-23",
       category: "cabin",
       isNew: false,
-      isFavorite: true
+      isFavorite: true,
+      maxGuests: 4,
+      bedrooms: 2,
+      bathrooms: 1
     },
     {
       id: 6,
@@ -110,7 +136,10 @@ const Homepage = () => {
       availableDates: "Feb 25 - Mar 2",
       category: "beachfront",
       isNew: true,
-      isFavorite: false
+      isFavorite: false,
+      maxGuests: 5,
+      bedrooms: 2,
+      bathrooms: 2
     },
     {
       id: 7,
@@ -126,7 +155,10 @@ const Homepage = () => {
       availableDates: "Mar 5-10",
       category: "house",
       isNew: false,
-      isFavorite: false
+      isFavorite: false,
+      maxGuests: 6,
+      bedrooms: 3,
+      bathrooms: 2
     },
     {
       id: 8,
@@ -142,7 +174,10 @@ const Homepage = () => {
       availableDates: "Mar 12-17",
       category: "luxury",
       isNew: true,
-      isFavorite: true
+      isFavorite: true,
+      maxGuests: 4,
+      bedrooms: 2,
+      bathrooms: 2
     }
   ];
 
@@ -150,20 +185,52 @@ const Homepage = () => {
   const newProperties = mockProperties.filter(p => p.isNew);
   const luxuryProperties = mockProperties.filter(p => p.category === 'luxury' || p.price > 500);
 
-  useEffect(() => {
-    filterProperties(activeCategory);
-  }, [activeCategory]);
-
-  const filterProperties = (category) => {
-    if (category === 'all') {
-      setFilteredProperties(mockProperties);
-    } else {
-      setFilteredProperties(mockProperties.filter(property => property.category === category));
+  // Filter properties based on search criteria
+  const filterPropertiesBySearch = (properties) => {
+    if (!hasSearchParams) {
+      return properties;
     }
+
+    return properties.filter(property => {
+      // Filter by location (case-insensitive partial match)
+      if (searchLocation && !property.location.toLowerCase().includes(searchLocation.toLowerCase())) {
+        return false;
+      }
+
+      // Filter by guest capacity
+      if (searchGuests && property.maxGuests < searchGuests) {
+        return false;
+      }
+
+      // For date filtering, we would typically check availability
+      // For now, we'll just return properties that match location and guests
+      return true;
+    });
   };
+
+  useEffect(() => {
+    const filtered = filterPropertiesBySearch(mockProperties);
+    setFilteredProperties(filtered);
+  }, [searchLocation, searchCheckIn, searchCheckOut, searchGuests]);
+
+  useEffect(() => {
+    if (activeCategory === 'all') {
+      const filtered = filterPropertiesBySearch(mockProperties);
+      setFilteredProperties(filtered);
+    } else {
+      const categoryFiltered = mockProperties.filter(property => property.category === activeCategory);
+      const searchFiltered = filterPropertiesBySearch(categoryFiltered);
+      setFilteredProperties(searchFiltered);
+    }
+  }, [activeCategory, searchLocation, searchCheckIn, searchCheckOut, searchGuests]);
 
   const handleCategoryChange = (category) => {
     setActiveCategory(category);
+  };
+
+  const clearSearch = () => {
+    setSearchParams({});
+    setActiveCategory('all');
   };
 
   return (
@@ -174,35 +241,133 @@ const Homepage = () => {
       <main className="pt-20">
         <HeroSearchSection />
         
+        {/* Search Results Header */}
+        {hasSearchParams && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="bg-surface rounded-lg p-4 border border-border">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <h2 className="text-lg font-poppins font-semibold text-text-primary mb-2">
+                    Search Results
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+                    {searchLocation && (
+                      <span className="flex items-center">
+                        <Icon name="MapPin" size={14} className="mr-1" />
+                        {searchLocation}
+                      </span>
+                    )}
+                    {searchCheckIn && searchCheckOut && (
+                      <span className="flex items-center">
+                        <Icon name="Calendar" size={14} className="mr-1" />
+                        {new Date(searchCheckIn).toLocaleDateString()} - {new Date(searchCheckOut).toLocaleDateString()}
+                      </span>
+                    )}
+                    {searchGuests > 1 && (
+                      <span className="flex items-center">
+                        <Icon name="Users" size={14} className="mr-1" />
+                        {searchGuests} guests
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={clearSearch}
+                  iconName="X"
+                  iconPosition="left"
+                  className="mt-2 sm:mt-0"
+                >
+                  Clear search
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Quick Navigation Section */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Services Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={() => navigate('/services')}>
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <Icon name="Wrench" size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-poppins font-semibold text-text-primary mb-1">Services</h3>
+                  <p className="text-sm font-inter text-text-secondary">Airport transfer, cleaning, concierge & more</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Experiences Card */}
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={() => navigate('/experiences')}>
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                  <Icon name="Star" size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-poppins font-semibold text-text-primary mb-1">Experiences</h3>
+                  <p className="text-sm font-inter text-text-secondary">Cooking classes, tours, adventures & activities</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Host Card */}
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={() => navigate('/become-host')}>
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                  <Icon name="UserPlus" size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-poppins font-semibold text-text-primary mb-1">Become a Host</h3>
+                  <p className="text-sm font-inter text-text-secondary">Share your space and earn money</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <CategoryFilter onCategoryChange={handleCategoryChange} />
         
         {activeCategory === 'all' ? (
           <>
-            <PropertySection 
-              title="Popular homes in: Krakow"
-              properties={popularProperties}
-              showNavigation={true}
-            />
-            
-            <PropertySection 
-              title="New on the platform"
-              properties={newProperties}
-              showNavigation={true}
-            />
-            
-            <TrendingDestinations />
-            
-            <PropertySection 
-              title="Luxury accommodations"
-              properties={luxuryProperties}
-              showNavigation={true}
-            />
+            {hasSearchParams ? (
+              <PropertySection 
+                title={`${filteredProperties.length} properties found`}
+                properties={filteredProperties}
+                showNavigation={false}
+              />
+            ) : (
+              <>
+                <PropertySection 
+                  title="Popular homes in: Krakow"
+                  properties={popularProperties}
+                  showNavigation={true}
+                />
+                
+                <PropertySection 
+                  title="New on the platform"
+                  properties={newProperties}
+                  showNavigation={true}
+                />
+                
+                <TrendingDestinations />
+                
+                <PropertySection 
+                  title="Luxury accommodations"
+                  properties={luxuryProperties}
+                  showNavigation={true}
+                />
+              </>
+            )}
             
             <HostPromotionBanner />
           </>
         ) : (
           <PropertySection 
-            title={`${activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)} properties`}
+            title={`${activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)} properties ${hasSearchParams ? `(${filteredProperties.length} found)` : ''}`}
             properties={filteredProperties}
             showNavigation={false}
           />

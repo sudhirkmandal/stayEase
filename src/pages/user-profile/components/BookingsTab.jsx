@@ -70,6 +70,9 @@ const BookingsTab = () => {
 
   const filters = [
     { id: 'all', label: 'All', count: bookings.length },
+    { id: 'property', label: 'Properties', count: bookings.filter(b => !b.type || b.type === 'property').length },
+    { id: 'service', label: 'Services', count: bookings.filter(b => b.type === 'service').length },
+    { id: 'experience', label: 'Experiences', count: bookings.filter(b => b.type === 'experience').length },
     { id: 'upcoming', label: 'Upcoming', count: bookings.filter(b => b.status === 'confirmed').length },
     { id: 'completed', label: 'Completed', count: bookings.filter(b => b.status === 'completed').length },
     { id: 'cancelled', label: 'Cancelled', count: bookings.filter(b => b.status === 'cancelled').length }
@@ -77,7 +80,14 @@ const BookingsTab = () => {
 
   const filteredBookings = activeFilter === 'all' 
     ? bookings 
-    : bookings.filter(booking => booking.status === activeFilter);
+    : activeFilter === 'upcoming' || activeFilter === 'completed' || activeFilter === 'cancelled'
+    ? bookings.filter(booking => booking.status === activeFilter)
+    : bookings.filter(booking => {
+        if (activeFilter === 'property') {
+          return !booking.type || booking.type === 'property';
+        }
+        return booking.type === activeFilter;
+      });
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -181,6 +191,76 @@ const BookingsTab = () => {
     return 'https://randomuser.me/api/portraits/lego/1.jpg'; // Default avatar
   };
 
+  // Helper function to get booking title
+  const getBookingTitle = (booking) => {
+    if (booking.type === 'service' || booking.type === 'experience') {
+      return booking.item?.title || 'Title not available';
+    }
+    return booking.property?.title || 'Property Title Not Available';
+  };
+
+  // Helper function to get booking image
+  const getBookingImage = (booking) => {
+    if (booking.type === 'service' || booking.type === 'experience') {
+      return booking.item?.image || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop';
+    }
+    return booking.property?.images?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop';
+  };
+
+  // Helper function to get booking location
+  const getBookingLocation = (booking) => {
+    if (booking.type === 'service') {
+      return 'Service Location';
+    }
+    if (booking.type === 'experience') {
+      return booking.item?.location || 'Location not available';
+    }
+    return getLocationDisplay(booking);
+  };
+
+  // Helper function to get booking price
+  const getBookingPrice = (booking) => {
+    if (booking.type === 'service') {
+      return booking.item?.price || '$0';
+    }
+    if (booking.type === 'experience') {
+      const basePrice = booking.item?.price || '$0';
+      const guests = booking.guests || 1;
+      if (guests > 1) {
+        const priceValue = parseFloat(basePrice.replace('$', ''));
+        return `$${priceValue * guests} (${basePrice} × ${guests} guests)`;
+      }
+      return basePrice;
+    }
+    return formatPrice(booking.totalPrice);
+  };
+
+  // Helper function to get booking date info
+  const getBookingDateInfo = (booking) => {
+    if (booking.type === 'service' || booking.type === 'experience') {
+      return {
+        label: 'Scheduled for',
+        date: booking.date,
+        time: booking.time
+      };
+    }
+    return {
+      checkIn: booking.checkInDate,
+      checkOut: booking.checkOutDate
+    };
+  };
+
+  // Helper function to get booking type icon
+  const getBookingTypeIcon = (booking) => {
+    if (booking.type === 'service') {
+      return 'Wrench';
+    }
+    if (booking.type === 'experience') {
+      return 'Star';
+    }
+    return 'Home';
+  };
+
   // Show message if not authenticated
   if (!isAuthenticated || !user) {
     return (
@@ -243,8 +323,8 @@ const BookingsTab = () => {
                 {/* Property Image */}
                 <div className="md:w-48 h-48 md:h-auto flex-shrink-0">
                   <Image
-                    src={booking.property?.images?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop'}
-                    alt={booking.property?.title || 'Property'}
+                    src={getBookingImage(booking)}
+                    alt={getBookingTitle(booking)}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -260,18 +340,18 @@ const BookingsTab = () => {
                         </span>
                       </div>
                       <h3 className="text-base md:text-lg font-poppins font-semibold text-text-primary mb-2 truncate">
-                        {booking.property?.title || 'Property Title Not Available'}
+                        {getBookingTitle(booking)}
                       </h3>
                       <div className="flex items-center space-x-2 mb-3">
                         <Icon name="MapPin" size={16} className="text-text-secondary flex-shrink-0" />
                         <span className="text-sm font-inter text-text-secondary truncate">
-                          {getLocationDisplay(booking)}
+                          {getBookingLocation(booking)}
                         </span>
                       </div>
                     </div>
                     <div className="text-right mt-4 md:mt-0 flex-shrink-0">
                       <p className="text-lg font-poppins font-semibold text-text-primary">
-                        {formatPrice(booking.totalPrice)}
+                        {getBookingPrice(booking)}
                       </p>
                       <p className="text-xs font-inter text-text-secondary">
                         total
@@ -281,50 +361,102 @@ const BookingsTab = () => {
 
                   {/* Booking Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Icon name="Calendar" size={16} className="text-text-secondary flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-inter text-text-secondary">Check-in</p>
-                        <p className="text-sm font-inter font-medium text-text-primary truncate">
-                          {formatDate(booking.checkInDate)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Icon name="Calendar" size={16} className="text-text-secondary flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-inter text-text-secondary">Check-out</p>
-                        <p className="text-sm font-inter font-medium text-text-primary truncate">
-                          {formatDate(booking.checkOutDate)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 sm:col-span-2 md:col-span-1">
-                      <Icon name="Users" size={16} className="text-text-secondary flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-inter text-text-secondary">Guests</p>
-                        <p className="text-sm font-inter font-medium text-text-primary">
-                          {booking.guests || 1} {(booking.guests || 1) === 1 ? 'guest' : 'guests'}
-                        </p>
-                      </div>
-                    </div>
+                    {booking.type === 'service' || booking.type === 'experience' ? (
+                      <>
+                        <div className="flex items-center space-x-2">
+                          <Icon name="Calendar" size={16} className="text-text-secondary flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-inter text-text-secondary">Date</p>
+                            <p className="text-sm font-inter font-medium text-text-primary truncate">
+                              {formatDate(booking.date)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Icon name="Clock" size={16} className="text-text-secondary flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-inter text-text-secondary">Time</p>
+                            <p className="text-sm font-inter font-medium text-text-primary truncate">
+                              {booking.time || 'TBD'}
+                            </p>
+                          </div>
+                        </div>
+                        {booking.type === 'experience' && (
+                          <div className="flex items-center space-x-2 sm:col-span-2 md:col-span-1">
+                            <Icon name="Users" size={16} className="text-text-secondary flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-inter text-text-secondary">Guests</p>
+                              <p className="text-sm font-inter font-medium text-text-primary">
+                                {booking.guests || 1} {(booking.guests || 1) === 1 ? 'guest' : 'guests'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center space-x-2">
+                          <Icon name="Calendar" size={16} className="text-text-secondary flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-inter text-text-secondary">Check-in</p>
+                            <p className="text-sm font-inter font-medium text-text-primary truncate">
+                              {formatDate(booking.checkInDate)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Icon name="Calendar" size={16} className="text-text-secondary flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-inter text-text-secondary">Check-out</p>
+                            <p className="text-sm font-inter font-medium text-text-primary truncate">
+                              {formatDate(booking.checkOutDate)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 sm:col-span-2 md:col-span-1">
+                          <Icon name="Users" size={16} className="text-text-secondary flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-inter text-text-secondary">Guests</p>
+                            <p className="text-sm font-inter font-medium text-text-primary">
+                              {booking.guests || 1} {(booking.guests || 1) === 1 ? 'guest' : 'guests'}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Host Info */}
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                      <Image
-                        src={getHostAvatar(booking)}
-                        alt={getHostName(booking)}
-                        className="w-full h-full object-cover"
-                      />
+                  {(booking.type === 'service' || booking.type === 'experience') ? (
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                        <Icon name={getBookingTypeIcon(booking)} size={16} className="w-full h-full p-2 bg-primary/10 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-inter font-medium text-text-primary truncate">
+                          {booking.type === 'service' ? 'Service Provider' : 'Experience Host'}
+                        </p>
+                        <p className="text-xs font-inter text-text-secondary truncate">
+                          {booking.type === 'service' ? 'Professional Service' : booking.item?.category || 'Experience'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-inter font-medium text-text-primary truncate">
-                        Host: {getHostName(booking)}
-                      </p>
+                  ) : (
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                        <Image
+                          src={getHostAvatar(booking)}
+                          alt={getHostName(booking)}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-inter font-medium text-text-primary truncate">
+                          Host: {getHostName(booking)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Guest Info */}
                   {booking.guestInfo && (
@@ -366,17 +498,19 @@ const BookingsTab = () => {
                       <span className="sm:hidden">Details</span>
                     </Button>
                     
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      iconName="Home"
-                      iconPosition="left"
-                      onClick={() => handleViewProperty(booking)}
-                      className="text-xs sm:text-sm"
-                    >
-                      <span className="hidden sm:inline">View property</span>
-                      <span className="sm:hidden">Property</span>
-                    </Button>
+                    {booking.type !== 'service' && booking.type !== 'experience' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        iconName="Home"
+                        iconPosition="left"
+                        onClick={() => handleViewProperty(booking)}
+                        className="text-xs sm:text-sm"
+                      >
+                        <span className="hidden sm:inline">View property</span>
+                        <span className="sm:hidden">Property</span>
+                      </Button>
+                    )}
                     
                     {booking.status === 'confirmed' && (
                       <Button
@@ -400,7 +534,10 @@ const BookingsTab = () => {
                         iconPosition="left"
                         className="text-xs sm:text-sm"
                       >
-                        <span className="hidden sm:inline">Rate stay</span>
+                        <span className="hidden sm:inline">
+                          {booking.type === 'service' ? 'Rate service' : 
+                           booking.type === 'experience' ? 'Rate experience' : 'Rate stay'}
+                        </span>
                         <span className="sm:hidden">Rate</span>
                       </Button>
                     )}
@@ -420,17 +557,24 @@ const BookingsTab = () => {
           </h3>
           <p className="text-sm font-inter text-text-secondary mb-6 px-4">
             {activeFilter === 'all' 
-              ? "You haven't made any bookings yet. Start exploring properties to book your next trip!"
+              ? "You haven't made any bookings yet. Start exploring properties, services, and experiences to book your next adventure!"
+              : activeFilter === 'property'
+              ? "You haven't booked any properties yet. Start exploring accommodations for your next trip!"
+              : activeFilter === 'service'
+              ? "You haven't booked any services yet. Discover professional services to enhance your stay!"
+              : activeFilter === 'experience'
+              ? "You haven't booked any experiences yet. Find unique activities hosted by locals!"
               : `No ${activeFilter} bookings found.`
             }
           </p>
           <Button
             variant="primary"
-            onClick={() => navigate('/homepage')}
+            onClick={() => navigate(activeFilter === 'service' ? '/services' : activeFilter === 'experience' ? '/experiences' : '/homepage')}
             iconName="Search"
             iconPosition="left"
           >
-            Explore properties
+            {activeFilter === 'service' ? 'Explore services' : 
+             activeFilter === 'experience' ? 'Explore experiences' : 'Explore properties'}
           </Button>
         </div>
       )}

@@ -10,12 +10,12 @@ import LocationMap from './components/LocationMap';
 import MobileBookingBar from './components/MobileBookingBar';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import SaveButton from '../../components/ui/SaveButton';
 
 const PropertyDetail = () => {
   const { id } = useParams();
   const location = useLocation();
   const [property, setProperty] = useState(null);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Mock properties database - this would come from an API in a real app
@@ -401,10 +401,6 @@ const PropertyDetail = () => {
     }
   }, [id, location.state]);
 
-  const handleToggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -487,17 +483,7 @@ const PropertyDetail = () => {
                 <span>•</span>
                 <span>{property.location}</span>
               </div>
-              <Button
-                variant="ghost"
-                onClick={handleToggleFavorite}
-                className="w-8 h-8 p-0"
-              >
-                <Icon 
-                  name="Heart" 
-                  size={20} 
-                  className={isFavorite ? 'text-primary fill-current' : 'text-text-secondary'} 
-                />
-              </Button>
+              <SaveButton property={property} size="sm" />
             </div>
           </div>
 
@@ -518,17 +504,7 @@ const PropertyDetail = () => {
                 <div className="flex-1">
                   <PropertyInfo property={property} />
                 </div>
-                <Button
-                  variant="ghost"
-                  onClick={handleToggleFavorite}
-                  className="ml-4 w-10 h-10 p-0 flex-shrink-0"
-                >
-                  <Icon 
-                    name="Heart" 
-                    size={24} 
-                    className={isFavorite ? 'text-primary fill-current' : 'text-text-secondary'} 
-                  />
-                </Button>
+                <SaveButton property={property} size="sm" />
               </div>
 
               {/* Mobile Property Info */}
@@ -560,8 +536,6 @@ const PropertyDetail = () => {
       {/* Mobile Booking Bar */}
       <MobileBookingBar 
         property={property}
-        isFavorite={isFavorite}
-        onToggleFavorite={handleToggleFavorite}
       />
     </div>
   );

@@ -1,107 +1,137 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const SavedPropertiesTab = () => {
-  const [savedProperties, setSavedProperties] = useState([
-    {
-      id: 1,
-      title: 'Przytulny apartament w centrum Krakowa',
-      location: 'Kraków, Małopolskie',
-      price: 150,
-      rating: 4.8,
-      reviewCount: 124,
-      image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop',
-      hostName: 'Anna Kowalska',
-      propertyType: 'Cały apartament',
-      beds: 2,
-      baths: 1,
-      savedDate: '2024-01-15',
-      isAvailable: true
-    },
-    {
-      id: 2,
-      title: 'Nowoczesne studio przy plaży',
-      location: 'Gdańsk, Pomorskie',
-      price: 120,
-      rating: 4.9,
-      reviewCount: 89,
-      image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&h=300&fit=crop',
-      hostName: 'Piotr Nowak',
-      propertyType: 'Studio',
-      beds: 1,
-      baths: 1,
-      savedDate: '2024-01-10',
-      isAvailable: true
-    },
-    {
-      id: 3,
-      title: 'Luksusowa willa z basenem',
-      location: 'Zakopane, Małopolskie',
-      price: 300,
-      rating: 4.7,
-      reviewCount: 67,
-      image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=300&fit=crop',
-      hostName: 'Maria Wiśniewska',
-      propertyType: 'Cały dom',
-      beds: 4,
-      baths: 3,
-      savedDate: '2024-01-08',
-      isAvailable: false
-    },
-    {
-      id: 4,
-      title: 'Klimatyczny loft w Warszawie',
-      location: 'Warszawa, Mazowieckie',
-      price: 180,
-      rating: 4.6,
-      reviewCount: 156,
-      image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=300&fit=crop',
-      hostName: 'Tomasz Kowalski',
-      propertyType: 'Loft',
-      beds: 1,
-      baths: 1,
-      savedDate: '2024-01-05',
-      isAvailable: true
-    }
-  ]);
-
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  const [savedProperties, setSavedProperties] = useState([]);
   const [sortBy, setSortBy] = useState('recent');
 
+  // Load saved properties from localStorage
+  useEffect(() => {
+    const loadSavedProperties = () => {
+      try {
+        const storedSaved = JSON.parse(localStorage.getItem('savedProperties') || '[]');
+        
+        // Filter saved properties for current user only
+        const userSavedProperties = storedSaved.filter(item => {
+          if (!item.userId && isAuthenticated && user) {
+            return true; // Assume old saved items belong to current user
+          }
+          return item.userId === user?.id;
+        });
+        
+        setSavedProperties(userSavedProperties);
+      } catch (error) {
+        console.error('Error loading saved properties:', error);
+        setSavedProperties([]);
+      }
+    };
+
+    if (isAuthenticated && user) {
+      loadSavedProperties();
+    } else {
+      setSavedProperties([]);
+    }
+  }, [isAuthenticated, user]);
+
   const handleRemoveFromSaved = (propertyId) => {
-    setSavedProperties(prev => prev.filter(property => property.id !== propertyId));
+    try {
+      const updatedSaved = savedProperties.filter(property => property.id !== propertyId);
+      setSavedProperties(updatedSaved);
+      
+      // Update localStorage
+      const allSaved = JSON.parse(localStorage.getItem('savedProperties') || '[]');
+      const otherUserSaved = allSaved.filter(item => item.userId !== user?.id);
+      const updatedAllSaved = [...otherUserSaved, ...updatedSaved];
+      localStorage.setItem('savedProperties', JSON.stringify(updatedAllSaved));
+    } catch (error) {
+      console.error('Error removing from saved:', error);
+    }
+  };
+
+  const handleViewProperty = (property) => {
+    navigate(`/property-detail/${property.id}`);
+  };
+
+  const handleBookProperty = (property) => {
+    navigate(`/property-detail/${property.id}`, {
+      state: { 
+        property: property,
+        bookingData: {
+          checkIn: new Date().toISOString().split('T')[0],
+          checkOut: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          guests: 2
+        }
+      }
+    });
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('pl-PL', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'PLN'
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pl-PL', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    if (!dateString) return 'Recently';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return 'Recently';
+    }
   };
 
   const sortedProperties = [...savedProperties].sort((a, b) => {
     switch (sortBy) {
       case 'recent':
-        return new Date(b.savedDate) - new Date(a.savedDate);
+        return new Date(b.savedDate || 0) - new Date(a.savedDate || 0);
       case 'price-low':
-        return a.price - b.price;
+        return (a.price || 0) - (b.price || 0);
       case 'price-high':
-        return b.price - a.price;
+        return (b.price || 0) - (a.price || 0);
       case 'rating':
-        return b.rating - a.rating;
+        return (b.rating || 0) - (a.rating || 0);
       default:
         return 0;
     }
   });
+
+  // Show message if not authenticated
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+          <Icon name="Lock" size={32} className="text-text-secondary" />
+        </div>
+        <h3 className="text-lg font-poppins font-semibold text-text-primary mb-2">
+          Authentication Required
+        </h3>
+        <p className="text-sm font-inter text-text-secondary mb-6">
+          Please log in to view your saved properties.
+        </p>
+        <Button
+          variant="primary"
+          onClick={() => navigate('/login')}
+          iconName="LogIn"
+          iconPosition="left"
+        >
+          Log In
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -109,24 +139,24 @@ const SavedPropertiesTab = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div>
           <h2 className="text-xl font-poppins font-semibold text-text-primary">
-            Zapisane noclegi
+            Saved Properties
           </h2>
           <p className="text-sm font-inter text-text-secondary">
-            {savedProperties.length} {savedProperties.length === 1 ? 'zapisany nocleg' : 'zapisanych noclegów'}
+            {savedProperties.length} {savedProperties.length === 1 ? 'saved property' : 'saved properties'}
           </p>
         </div>
         
         <div className="flex items-center space-x-3">
-          <span className="text-sm font-inter text-text-secondary">Sortuj według:</span>
+          <span className="text-sm font-inter text-text-secondary">Sort by:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 border border-border-input rounded-md text-sm font-inter text-text-primary bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="px-3 py-2 border border-border rounded-md text-sm font-inter text-text-primary bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           >
-            <option value="recent">Ostatnio zapisane</option>
-            <option value="price-low">Cena: od najniższej</option>
-            <option value="price-high">Cena: od najwyższej</option>
-            <option value="rating">Najwyżej oceniane</option>
+            <option value="recent">Recently saved</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="rating">Highest Rated</option>
           </select>
         </div>
       </div>
@@ -139,7 +169,7 @@ const SavedPropertiesTab = () => {
               {/* Property Image */}
               <div className="relative h-48">
                 <Image
-                  src={property.image}
+                  src={property.image || property.images?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop'}
                   alt={property.title}
                   className="w-full h-full object-cover"
                 />
@@ -149,10 +179,10 @@ const SavedPropertiesTab = () => {
                 >
                   <Icon name="Heart" size={18} className="text-primary fill-current" />
                 </button>
-                {!property.isAvailable && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="px-3 py-1 bg-error text-error-foreground text-sm font-inter font-medium rounded-full">
-                      Niedostępny
+                {property.isNew && (
+                  <div className="absolute top-3 left-3">
+                    <span className="px-2 py-1 bg-primary text-primary-foreground text-xs font-inter font-medium rounded-full">
+                      New
                     </span>
                   </div>
                 )}
@@ -180,11 +210,19 @@ const SavedPropertiesTab = () => {
                 </div>
 
                 <div className="flex items-center space-x-4 mb-3 text-xs font-inter text-text-secondary">
-                  <span>{property.propertyType}</span>
-                  <span>•</span>
-                  <span>{property.beds} {property.beds === 1 ? 'łóżko' : 'łóżka'}</span>
-                  <span>•</span>
-                  <span>{property.baths} {property.baths === 1 ? 'łazienka' : 'łazienki'}</span>
+                  <span>{property.category || 'Property'}</span>
+                  {property.beds && (
+                    <>
+                      <span>•</span>
+                      <span>{property.beds} {property.beds === 1 ? 'bed' : 'beds'}</span>
+                    </>
+                  )}
+                  {property.baths && (
+                    <>
+                      <span>•</span>
+                      <span>{property.baths} {property.baths === 1 ? 'bath' : 'baths'}</span>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between mb-3">
@@ -192,10 +230,10 @@ const SavedPropertiesTab = () => {
                     <span className="text-lg font-poppins font-semibold text-text-primary">
                       {formatPrice(property.price)}
                     </span>
-                    <span className="text-sm font-inter text-text-secondary"> / noc</span>
+                    <span className="text-sm font-inter text-text-secondary"> / night</span>
                   </div>
                   <span className="text-xs font-inter text-text-secondary">
-                    Zapisano {formatDate(property.savedDate)}
+                    Saved {formatDate(property.savedDate)}
                   </span>
                 </div>
 
@@ -204,18 +242,19 @@ const SavedPropertiesTab = () => {
                     variant="primary"
                     size="sm"
                     fullWidth
-                    disabled={!property.isAvailable}
                     iconName="Calendar"
                     iconPosition="left"
+                    onClick={() => handleBookProperty(property)}
                   >
-                    {property.isAvailable ? 'Zarezerwuj' : 'Niedostępny'}
+                    Book Now
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     iconName="Eye"
+                    onClick={() => handleViewProperty(property)}
                   >
-                    Zobacz
+                    View
                   </Button>
                 </div>
               </div>
@@ -226,17 +265,18 @@ const SavedPropertiesTab = () => {
         <div className="bg-background border border-border rounded-lg p-12 text-center">
           <Icon name="Heart" size={64} className="text-text-secondary mx-auto mb-4" />
           <h3 className="text-lg font-poppins font-semibold text-text-primary mb-2">
-            Brak zapisanych noclegów
+            No saved properties
           </h3>
           <p className="text-sm font-inter text-text-secondary mb-6">
-            Zapisuj noclegi, które Ci się podobają, aby łatwo je odnaleźć później
+            Save properties you like to easily find them later
           </p>
           <Button
             variant="primary"
             iconName="Search"
             iconPosition="left"
+            onClick={() => navigate('/homepage')}
           >
-            Przeglądaj noclegi
+            Browse properties
           </Button>
         </div>
       )}
@@ -245,7 +285,7 @@ const SavedPropertiesTab = () => {
       {savedProperties.length > 0 && (
         <div className="bg-surface border border-border rounded-lg p-6">
           <h3 className="text-lg font-poppins font-semibold text-text-primary mb-4">
-            Szybkie akcje
+            Quick Actions
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button
@@ -254,7 +294,7 @@ const SavedPropertiesTab = () => {
               iconPosition="left"
               fullWidth
             >
-              Udostępnij listę
+              Share list
             </Button>
             <Button
               variant="outline"
@@ -262,7 +302,7 @@ const SavedPropertiesTab = () => {
               iconPosition="left"
               fullWidth
             >
-              Eksportuj PDF
+              Export PDF
             </Button>
             <Button
               variant="outline"
@@ -270,7 +310,7 @@ const SavedPropertiesTab = () => {
               iconPosition="left"
               fullWidth
             >
-              Filtruj zapisane
+              Filter saved
             </Button>
           </div>
         </div>

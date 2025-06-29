@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import SaveButton from '../../../components/ui/SaveButton';
 import BookingWidget from './BookingWidget';
 
-const MobileBookingBar = ({ property, isFavorite, onToggleFavorite }) => {
+const MobileBookingBar = ({ property }) => {
   const [showBookingWidget, setShowBookingWidget] = useState(false);
 
   return (
@@ -30,17 +31,7 @@ const MobileBookingBar = ({ property, isFavorite, onToggleFavorite }) => {
           </div>
           
           <div className="flex items-center space-x-3">
-            <Button
-              variant="ghost"
-              onClick={onToggleFavorite}
-              className="w-10 h-10 p-0 rounded-full"
-            >
-              <Icon 
-                name="Heart" 
-                size={20} 
-                className={isFavorite ? 'text-primary fill-current' : 'text-text-secondary'} 
-              />
-            </Button>
+            <SaveButton property={property} size="sm" />
             
             <Button
               variant="primary"

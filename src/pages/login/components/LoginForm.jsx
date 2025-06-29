@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Icon from '../../../components/AppIcon';
@@ -7,6 +7,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 const LoginForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -15,6 +16,20 @@ const LoginForm = () => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get return path and booking data from navigation state
+  const returnPath = location.state?.returnPath || '/homepage';
+  const bookingData = location.state?.bookingData;
+
+  // Auto-fill email if provided in booking data
+  useEffect(() => {
+    if (bookingData?.contactEmail) {
+      setFormData(prev => ({
+        ...prev,
+        email: bookingData.contactEmail
+      }));
+    }
+  }, [bookingData]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -61,7 +76,17 @@ const LoginForm = () => {
       const result = await login(formData.email, formData.password);
       
       if (result.success) {
-        navigate('/homepage');
+        // If there's booking data, redirect to the original page to complete booking
+        if (bookingData) {
+          navigate(returnPath, { 
+            state: { 
+              completeBooking: true,
+              bookingData: bookingData
+            } 
+          });
+        } else {
+          navigate(returnPath);
+        }
       } else {
         setErrors({
           general: result.error || 'Login failed. Please try again.'
@@ -84,7 +109,17 @@ const LoginForm = () => {
       // For demo purposes, we'll use the same mock credentials
       login('user@stayease.com', 'password123').then(result => {
         if (result.success) {
-          navigate('/homepage');
+          // If there's booking data, redirect to the original page to complete booking
+          if (bookingData) {
+            navigate(returnPath, { 
+              state: { 
+                completeBooking: true,
+                bookingData: bookingData
+              } 
+            });
+          } else {
+            navigate(returnPath);
+          }
         }
       });
     }, 1000);

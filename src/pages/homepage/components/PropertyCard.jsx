@@ -3,16 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import Image from '../../../components/AppImage';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import SaveButton from '../../../components/ui/SaveButton';
 
 const PropertyCard = ({ property }) => {
-  const [isFavorite, setIsFavorite] = useState(property.isFavorite || false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const navigate = useNavigate();
-
-  const handleFavoriteToggle = (e) => {
-    e.stopPropagation();
-    setIsFavorite(!isFavorite);
-  };
 
   const handleCardClick = () => {
     navigate(`/property-detail/${property.id}`, { state: { property } });
@@ -63,18 +58,12 @@ const PropertyCard = ({ property }) => {
           </>
         )}
 
-        {/* Favorite Button */}
-        <Button
-          variant="ghost"
-          onClick={handleFavoriteToggle}
-          className="absolute top-3 right-3 w-8 h-8 p-0 rounded-full bg-background/80 hover:bg-background"
-        >
-          <Icon 
-            name="Heart" 
-            size={16} 
-            className={isFavorite ? 'fill-primary text-primary' : 'text-text-secondary'} 
-          />
-        </Button>
+        {/* Save Button */}
+        <SaveButton 
+          property={property}
+          className="absolute top-3 right-3"
+          size="sm"
+        />
 
         {/* Image Dots */}
         {property.images.length > 1 && (
