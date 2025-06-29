@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Primary Colors */
+    --color-primary: #FF5A5F; /* Airbnb signature red */
+    --color-primary-foreground: #FFFFFF; /* white */
+    
+    /* Secondary Colors */
+    --color-secondary: #767676; /* neutral gray */
+    --color-secondary-foreground: #FFFFFF; /* white */
+    
+    /* Accent Colors */
+    --color-accent: #008489; /* teal */
+    --color-accent-foreground: #FFFFFF; /* white */
+    
+    /* Background Colors */
+    --color-background: #FFFFFF; /* pure white */
+    --color-surface: #F7F7F7; /* subtle warm gray */
+    
+    /* Text Colors */
+    --color-text-primary: #222222; /* near-black */
+    --color-text-secondary: #717171; /* medium gray */
+    
+    /* Status Colors */
+    --color-success: #00A699; /* vibrant teal */
+    --color-success-foreground: #FFFFFF; /* white */
+    --color-warning: #FC642D; /* warm orange */
+    --color-warning-foreground: #FFFFFF; /* white */
+    --color-error: #C13515; /* deep red */
+    --color-error-foreground: #FFFFFF; /* white */
+    
+    /* Border Colors */
+    --color-border: #E5E5E5; /* light gray */
+    --color-border-input: #E5E5E5; /* light gray */
+    
+    /* Shadow Colors */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-text-primary font-inter;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-poppins;
+  }
+}
+
+@layer components {
+  .font-poppins {
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  .font-inter {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .font-source-sans {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+  
+  .font-jetbrains {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
